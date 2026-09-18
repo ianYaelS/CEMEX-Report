@@ -23,34 +23,28 @@ export function vehicleLabel(vehicle) {
   return `${vehicle.name} · ${vehicle.licensePlate || "sin placa"} · ${vehicle.id}`;
 }
 
-function isLocalHost(hostname) {
-  return hostname === "127.0.0.1" || hostname === "localhost";
-}
-
-function hasSameOriginRelay(hostname) {
-  return (
-    isLocalHost(hostname) ||
-    hostname.endsWith("netlify.app") ||
-    hostname.endsWith("pages.dev")
-  );
-}
-
-export function resolveApiRoot(config, locationLike = window.location) {
+export function apiCandidates(config) {
+  const roots = [];
   const proxy = String(config.proxyUrl || "").trim().replace(/\/$/, "");
-  if (proxy) return `${proxy}/samsara`;
-  if (hasSameOriginRelay(locationLike.hostname || "")) return "/samsara";
-  return String(config.apiBaseUrl || "https://api.samsara.com").replace(/\/$/, "");
+  if (proxy) roots.push(`${proxy}/samsara`);
+  roots.push("/samsara");
+  roots.push(String(config.apiBaseUrl || "https://api.samsara.com").replace(/\/$/, ""));
+  return [...new Set(roots)];
+}
+
+export function resolveApiRoot(config) {
+  return apiCandidates(config)[0];
 }
 
 function apiErrorMessage(status, payload, cors) {
   if (cors) {
-    return "El navegador bloqueó Samsara desde github.io. Desbloquea en http://127.0.0.1:8787 (python web/server.py) o importa este mismo repo de GitHub en Netlify.";
+    return "No se pudo conectar con Samsara. Revisa el token.";
   }
   if (status === 401) {
-    return "Token inválido. Pega el api_key de esta org (Read Vehicles + Read/Write Functions).";
+    return "Token inválido.";
   }
   if (status === 403) {
-    return "El token no tiene permiso de Functions. Agrégale Functions Read y Write.";
+    return "El token no tiene permiso de Functions.";
   }
   if (status === 404) {
     return "Esa Function no existe en esta org.";
@@ -159,6 +153,20 @@ export async function listVehicles(apiRoot, token) {
     after = String(pagination.endCursor);
   }
   return vehicles.map((item) => ({ ...item, label: vehicleLabel(item) }));
+}
+
+export async function connectSamsara(config, token) {
+  const candidates = apiCandidates(config);
+  let lastError = new Error("No se pudo conectar con Samsara. Revisa el token.");
+  for (const root of candidates) {
+    try {
+      await samsaraFetch(root, token, "/fleet/vehicles?limit=1");
+      return root;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 export async function startFunctionRun(apiRoot, token, functionName, paramsOverride) {

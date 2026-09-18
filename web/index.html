@@ -3,30 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Certificación CEMEX — telemetría Samsara</title>
+    <title>CEMEX · Samsara</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div class="signal" aria-hidden="true"></div>
     <main class="shell">
       <header>
-        <p class="eyebrow">Certificación Samsara · CEMEX</p>
-        <h1>Informe de telemetría</h1>
-        <p class="lede">
-          Token → Function → unidad → fechas → run. El CSV lo escribe Samsara
-          Storage. El token no se guarda.
-        </p>
+        <p class="brand">Samsara</p>
+        <h1>CEMEX</h1>
+        <p class="lede">Token. Function. Unidad. Fechas. El reporte se genera en Samsara.</p>
       </header>
 
       <section id="gate" class="card">
-        <h2>Llave de acceso</h2>
-        <p class="hint">
-          Pega el API token de esta org: <strong>Read Vehicles</strong>,
-          <strong>Read Vehicle Statistics</strong>, <strong>Functions Read</strong>
-          y <strong>Functions Write</strong>. En github.io el navegador puede
-          bloquear Samsara; usa <code>http://127.0.0.1:8787</code> o publica este
-          mismo repo en
-          <a href="https://app.netlify.com/start/deploy?repository=https://github.com/ianYaelS/CEMEX-Report">Netlify</a>.
-        </p>
         <label for="token">API token</label>
         <input
           id="token"
@@ -35,7 +24,7 @@
           spellcheck="false"
           placeholder="samsara_api_…"
         />
-        <button id="unlock" type="button">Desbloquear y cargar unidades</button>
+        <button id="unlock" type="button">Continuar</button>
         <p id="gateStatus" class="status" role="status"></p>
       </section>
 
@@ -43,46 +32,39 @@
         <section class="card">
           <div class="toolbar">
             <p id="fleetMeta" class="hint"></p>
-            <button id="lock" type="button" class="ghost">Cerrar sesión</button>
+            <button id="lock" type="button" class="ghost">Salir</button>
           </div>
-          <label for="function">Function de Samsara</label>
+
+          <label for="function">Function</label>
           <select id="function"></select>
-          <p id="functionHint" class="hint">Se corre exactamente el nombre que elijas. Storage abre esa Function.</p>
-          <label for="filter">Buscar unidad</label>
-          <input id="filter" type="search" placeholder="Nombre, placa o id" autocomplete="off" />
-          <label for="vehicle">Unidad</label>
+
+          <label for="filter">Unidad</label>
+          <input id="filter" type="search" placeholder="Buscar nombre, placa o id" autocomplete="off" />
           <select id="vehicle"></select>
+
           <div class="row">
             <div>
-              <label for="start">Fecha inicio</label>
+              <label for="start">Inicio</label>
               <input id="start" type="date" />
             </div>
             <div>
-              <label for="end">Fecha fin (incluida)</label>
+              <label for="end">Fin</label>
               <input id="end" type="date" />
             </div>
           </div>
-          <p class="hint">Un día: mismas fechas. Máximo 7 días. Ejemplo: 2026-08-28 a 2026-09-03.</p>
-          <button id="generate" type="button">Correr Function en Samsara</button>
+
+          <button id="generate" type="button">Generar reporte</button>
           <p id="status" class="status" role="status"></p>
         </section>
 
-        <section id="result" class="card result hidden">
-          <h2>Archivo generado en Samsara</h2>
+        <section id="result" class="card hidden">
+          <p class="eyebrow">Listo en Samsara Storage</p>
           <p id="resultSummary"></p>
-          <p class="compare">
-            El reporte no vive en GitHub. Ábrelo en Storage, busca este nombre y
-            descárgalo ahí para compararlo.
-          </p>
           <p id="storagePath" class="path"></p>
           <p id="correlation" class="hint"></p>
           <div class="actions">
-            <a id="storageLink" class="button-link" href="#" target="_blank" rel="noopener">
-              Abrir Storage en Samsara
-            </a>
-            <a id="functionLink" class="button-link secondary" href="#" target="_blank" rel="noopener">
-              Abrir la Function
-            </a>
+            <a id="storageLink" class="button-link" href="#" target="_blank" rel="noopener">Abrir Storage</a>
+            <a id="functionLink" class="button-link ghost-link" href="#" target="_blank" rel="noopener">Ver Function</a>
           </div>
         </section>
       </section>

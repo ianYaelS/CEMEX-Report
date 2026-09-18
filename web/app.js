@@ -2,9 +2,9 @@ import {
   expectedStorageKey,
   functionPageUrl,
   functionStorageUrl,
+  connectSamsara,
   listFunctions,
   listVehicles,
-  resolveApiRoot,
   startFunctionRun,
   waitForFunctionRun,
 } from "./samsara.js";
@@ -15,6 +15,7 @@ const state = {
   vehicles: [],
   functions: [],
   unlocked: false,
+  apiRoot: "",
   config: {
     functionName: "cemex-telemetry-report-ui",
     functionNames: ["cemex-telemetry-report-ui"],
@@ -41,7 +42,7 @@ function token() {
 }
 
 function apiRoot() {
-  return resolveApiRoot(state.config);
+  return state.apiRoot;
 }
 
 function selectedFunctionName() {
@@ -108,14 +109,12 @@ function updateFunctionLinks() {
   const name = selectedFunctionName() || state.config.functionName;
   $("storageLink").href = functionStorageUrl(state.config.orgId, name);
   $("functionLink").href = functionPageUrl(state.config.orgId, name);
-  $("functionHint").textContent = name
-    ? `Se invocará POST /functions/${name}/runs. Storage: ${name}.`
-    : "Elige una Function.";
-  $("generate").textContent = name ? `Correr ${name}` : "Correr Function en Samsara";
+  $("generate").textContent = name ? `Generar con ${name}` : "Generar reporte";
 }
 
 function lockWorkspace() {
   state.unlocked = false;
+  state.apiRoot = "";
   state.vehicles = [];
   state.functions = [];
   $("token").value = "";
@@ -162,11 +161,12 @@ async function unlock() {
     return;
   }
   $("unlock").disabled = true;
-  setStatus("gateStatus", "Validando el token, Functions y unidades…");
+  setStatus("gateStatus", "Conectando con Samsara…");
   try {
+    state.apiRoot = await connectSamsara(state.config, token());
     const [vehicles, functions] = await Promise.all([
-      listVehicles(apiRoot(), token()),
-      listFunctions(apiRoot(), token(), state.config.functionNames || [state.config.functionName]),
+      listVehicles(state.apiRoot, token()),
+      listFunctions(state.apiRoot, token(), state.config.functionNames || [state.config.functionName]),
     ]);
     state.vehicles = vehicles;
     state.functions = functions;
@@ -177,7 +177,7 @@ async function unlock() {
       throw new Error("No se encontró ninguna Function. Revisa Functions Read o el nombre en Samsara.");
     }
     unlockWorkspace();
-    setStatus("status", "Elige Function, unidad y fechas. Luego corre el run en Samsara.", "ok");
+    setStatus("status", "", "");
   } catch (error) {
     setStatus("gateStatus", error.message, "err");
   } finally {
