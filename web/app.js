@@ -7,7 +7,7 @@ import {
   listVehicles,
   startFunctionRun,
   waitForFunctionRun,
-} from "./samsara.js";
+} from "./samsara.js?v=5";
 
 const $ = (id) => document.getElementById(id);
 
@@ -174,7 +174,7 @@ async function unlock() {
       throw new Error("El token funcionó pero la org no tiene unidades visibles.");
     }
     if (!state.functions.length) {
-      throw new Error("No se encontró ninguna Function. Revisa Functions Read o el nombre en Samsara.");
+      throw new Error("No hay Functions configuradas en el portal.");
     }
     unlockWorkspace();
     setStatus("status", "", "");

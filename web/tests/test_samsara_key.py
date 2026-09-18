@@ -32,6 +32,7 @@ def test_portal_points_to_cemex_function() -> None:
     config = json.loads((Path(__file__).resolve().parents[1] / "config.json").read_text(encoding="utf-8"))
     assert config["functionName"] == "cemex-telemetry-report-ui"
     assert "cemex-telemetry-report-ui" in config["functionNames"]
+    assert "cemex-telemetry-report-v2" in config["functionNames"]
     assert "view=storage" in config["storageUrl"]
 
 

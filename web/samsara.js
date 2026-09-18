@@ -104,28 +104,54 @@ function functionFromPayload(payload, fallbackName = "") {
   };
 }
 
+const MISSING_FUNCTION = [400, 403, 404, 405, 501];
+
+export function configuredFunctions(candidates = []) {
+  const names = [];
+  const seen = new Set();
+  for (const value of candidates) {
+    const name = String(value || "").trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    names.push({ name, description: "" });
+  }
+  return names;
+}
+
 export async function getFunction(apiRoot, token, name) {
   const payload = await samsaraFetch(apiRoot, token, `/functions/${encodeURIComponent(name)}`, {
-    ignoreStatuses: [404],
+    ignoreStatuses: MISSING_FUNCTION,
   });
   return payload ? functionFromPayload(payload, name) : null;
 }
 
 export async function listFunctions(apiRoot, token, candidates = []) {
   const found = new Map();
-  const listed = await samsaraFetch(apiRoot, token, "/functions", { ignoreStatuses: [404, 405] });
-  const rows = Array.isArray(listed?.data) ? listed.data : [];
-  for (const item of rows) {
-    const parsed = functionFromPayload(item, item?.name);
-    if (parsed) found.set(parsed.name, parsed);
+  const configured = configuredFunctions(candidates);
+  try {
+    const listed = await samsaraFetch(apiRoot, token, "/functions", { ignoreStatuses: MISSING_FUNCTION });
+    const rows = Array.isArray(listed?.data) ? listed.data : [];
+    for (const item of rows) {
+      const parsed = functionFromPayload(item, item?.name);
+      if (parsed) found.set(parsed.name, parsed);
+    }
+  } catch (_error) {
+    // No hay listado público de Functions; usamos los nombres del portal.
   }
   await Promise.all(
-    candidates.map(async (name) => {
-      if (!name || found.has(name)) return;
-      const parsed = await getFunction(apiRoot, token, name);
-      if (parsed) found.set(parsed.name, parsed);
+    configured.map(async (item) => {
+      if (found.has(item.name)) return;
+      try {
+        const parsed = await getFunction(apiRoot, token, item.name);
+        found.set(item.name, parsed || item);
+      } catch (_error) {
+        found.set(item.name, item);
+      }
     })
   );
+  if (!found.size) {
+    for (const item of configured) found.set(item.name, item);
+  }
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
