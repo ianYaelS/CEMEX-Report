@@ -7,7 +7,7 @@ import {
   listVehicles,
   startFunctionRun,
   waitForFunctionRun,
-} from "./samsara.js?v=6";
+} from "./samsara.js?v=7";
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,15 +17,15 @@ const state = {
   unlocked: false,
   apiRoot: "",
   config: {
-    functionName: "cemex-telemetry-report-ui",
-    functionNames: ["cemex-telemetry-report-ui"],
+    functionName: "cemex-telemetry-report",
+    functionNames: ["cemex-telemetry-report"],
     orgId: "11006658",
     apiBaseUrl: "https://api.samsara.com",
     proxyUrl: "",
     storagePrefix: "CEMEX_Reportes",
     storageUrl:
-      "https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report-ui",
-    functionUrl: "https://cloud.samsara.com/o/11006658/fleet/config/functions?name=cemex-telemetry-report-ui",
+      "https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report",
+    functionUrl: "https://cloud.samsara.com/o/11006658/fleet/config/functions?name=cemex-telemetry-report",
     maxRangeDays: 7,
   },
 };
@@ -50,7 +50,9 @@ function selectedFunctionName() {
 }
 
 function selectedFunction() {
-  return state.functions.find((item) => item.name === selectedFunctionName());
+  const name = selectedFunctionName();
+  if (!name) return null;
+  return state.functions.find((item) => item.name === name) || { name, description: "" };
 }
 
 function daySpan(start, end) {
@@ -211,6 +213,7 @@ async function generate() {
     return;
   }
   $("generate").disabled = true;
+  $("result").classList.add("hidden");
   setStatus("status", `Lanzando ${fn.name} en Samsara…`);
   try {
     const correlationId = await startFunctionRun(apiRoot(), token(), fn.name, {
@@ -233,9 +236,8 @@ async function generate() {
     });
     setStatus("status", `${fn.name} terminó. Ábrelo en Storage y descarga el archivo.`, "ok");
   } catch (error) {
+    $("result").classList.add("hidden");
     setStatus("status", error.message, "err");
-    $("result").classList.remove("hidden");
-    updateFunctionLinks();
   } finally {
     $("generate").disabled = false;
   }

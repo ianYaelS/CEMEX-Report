@@ -47,7 +47,8 @@ function apiErrorMessage(status, payload, cors) {
     return "El token no tiene permiso de Functions.";
   }
   if (status === 404) {
-    return "Esa Function no existe en esta org.";
+    const detail = payload?.message ? ` ${payload.message}` : "";
+    return `Samsara no encontró esa Function.${detail}`.trim();
   }
   if (status === 429) {
     return "Samsara limita a 2 corridas por minuto. Espera e inténtalo de nuevo.";
@@ -196,13 +197,23 @@ export async function connectSamsara(config, token) {
 }
 
 export async function startFunctionRun(apiRoot, token, functionName, paramsOverride) {
-  const payload = await samsaraFetch(apiRoot, token, `/functions/${encodeURIComponent(functionName)}/runs`, {
-    method: "POST",
-    body: { paramsOverride },
-  });
-  const correlationId = payload?.data?.correlationId || payload?.correlationId;
-  if (!correlationId) throw new Error("Samsara no devolvió correlationId.");
-  return String(correlationId);
+  try {
+    const payload = await samsaraFetch(apiRoot, token, `/functions/${encodeURIComponent(functionName)}/runs`, {
+      method: "POST",
+      body: { paramsOverride },
+    });
+    const correlationId = payload?.data?.correlationId || payload?.correlationId;
+    if (!correlationId) throw new Error("Samsara no devolvió correlationId.");
+    return String(correlationId);
+  } catch (error) {
+    const text = String(error?.message || "");
+    if (text.includes("no encontró") || text.includes("404")) {
+      throw new Error(
+        `La Function “${functionName}” no existe en esta org. Cópiala de Samsara → Functions.`
+      );
+    }
+    throw error;
+  }
 }
 
 export async function getFunctionRun(apiRoot, token, functionName, correlationId) {
