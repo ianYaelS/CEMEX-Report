@@ -21,8 +21,26 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare Pages
+        run: |
+          mkdir -p site/web
+          cp -R web/. site/
+          cat > site/web/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="es">
+            <head>
+              <meta charset="utf-8" />
+              <meta http-equiv="refresh" content="0; url=../" />
+              <title>CEMEX · Samsara</title>
+              <script>location.replace("../");</script>
+            </head>
+            <body>
+              <p><a href="../">Abrir informe CEMEX</a></p>
+            </body>
+          </html>
+          EOF
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4

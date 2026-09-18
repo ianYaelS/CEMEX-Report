@@ -1,6 +1,6 @@
 # CEMEX — reporte de telemetría
 
-Portal (`web/`): token → Function → unidad → fechas. El CSV lo genera Samsara Storage.
+Portal: [ianyaels.github.io/CEMEX-Report](https://ianyaels.github.io/CEMEX-Report/) — token → Function → unidad → fechas. El CSV lo genera Samsara Storage.
 
 Function: `cemex-telemetry-report-ui`  
 Storage: [abrir en Samsara](https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report-ui)
