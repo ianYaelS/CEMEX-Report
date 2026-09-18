@@ -3,17 +3,19 @@ import {
   functionPageUrl,
   functionStorageUrl,
   connectSamsara,
+  getOrganization,
   listFunctions,
   listVehicles,
   startFunctionRun,
   waitForFunctionRun,
-} from "./samsara.js?v=8";
+} from "./samsara.js?v=9";
 
 const $ = (id) => document.getElementById(id);
 
 const state = {
   vehicles: [],
   functions: [],
+  org: null,
   unlocked: false,
   apiRoot: "",
   config: {
@@ -119,6 +121,7 @@ function lockWorkspace() {
   state.apiRoot = "";
   state.vehicles = [];
   state.functions = [];
+  state.org = null;
   $("token").value = "";
   $("workspace").classList.add("hidden");
   $("gate").classList.remove("hidden");
@@ -131,7 +134,8 @@ function unlockWorkspace() {
   state.unlocked = true;
   $("gate").classList.add("hidden");
   $("workspace").classList.remove("hidden");
-  $("fleetMeta").textContent = `${state.vehicles.length} unidades · ${state.functions.length} Functions`;
+  const org = state.org ? `${state.org.name || "Org"} ${state.org.id}` : "Org desconocida";
+  $("fleetMeta").textContent = `${org} · ${state.vehicles.length} unidades · ${state.functions.length} Functions`;
   renderFunctions();
   renderVehicles("");
 }
@@ -171,12 +175,14 @@ async function unlock() {
   setStatus("gateStatus", "Conectando con Samsara…");
   try {
     state.apiRoot = await connectSamsara(state.config, token());
-    const [vehicles, functions] = await Promise.all([
+    const [vehicles, functions, org] = await Promise.all([
       listVehicles(state.apiRoot, token()),
       listFunctions(state.apiRoot, token(), state.config.functionNames || [state.config.functionName]),
+      getOrganization(state.apiRoot, token()),
     ]);
     state.vehicles = vehicles;
     state.functions = functions;
+    state.org = org;
     if (!state.vehicles.length) {
       throw new Error("El token funcionó pero la org no tiene unidades visibles.");
     }
@@ -184,7 +190,15 @@ async function unlock() {
       throw new Error("No hay Functions configuradas en el portal.");
     }
     unlockWorkspace();
-    setStatus("status", "", "");
+    if (state.org && state.config.orgId && state.org.id !== String(state.config.orgId)) {
+      setStatus(
+        "status",
+        `Este token es de la org ${state.org.id}, no de ${state.config.orgId}. La Function vive en ${state.config.orgId}.`,
+        "err"
+      );
+    } else {
+      setStatus("status", "", "");
+    }
   } catch (error) {
     setStatus("gateStatus", error.message, "err");
   } finally {

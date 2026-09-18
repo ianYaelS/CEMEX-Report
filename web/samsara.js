@@ -66,7 +66,7 @@ export function functionStorageUrl(orgId, name) {
   return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?view=storage&name=${encodeURIComponent(name)}`;
 }
 
-export async function samsaraFetch(apiRoot, token, path, { method = "GET", body, ignoreStatuses = [] } = {}) {
+async function samsaraRequest(apiRoot, token, path, { method = "GET", body } = {}) {
   const url = `${apiRoot}${path.startsWith("/") ? path : `/${path}`}`;
   let response;
   try {
@@ -89,11 +89,24 @@ export async function samsaraFetch(apiRoot, token, path, { method = "GET", body,
   } catch (_error) {
     payload = {};
   }
-  if (!response.ok) {
-    if (ignoreStatuses.includes(response.status)) return null;
-    throw new Error(apiErrorMessage(response.status, payload, false));
+  return { ok: response.ok, status: response.status, payload };
+}
+
+export async function samsaraFetch(apiRoot, token, path, { method = "GET", body, ignoreStatuses = [] } = {}) {
+  const result = await samsaraRequest(apiRoot, token, path, { method, body });
+  if (!result.ok) {
+    if (ignoreStatuses.includes(result.status)) return null;
+    throw new Error(apiErrorMessage(result.status, result.payload, false));
   }
-  return payload;
+  return result.payload;
+}
+
+export async function getOrganization(apiRoot, token) {
+  const payload = await samsaraFetch(apiRoot, token, "/me", { ignoreStatuses: [401, 403, 404, 405] });
+  const data = payload?.data && !Array.isArray(payload.data) ? payload.data : payload;
+  const id = String(data?.id || "").trim();
+  if (!id) return null;
+  return { id, name: String(data.name || "").trim() };
 }
 
 function functionFromPayload(payload, fallbackName = "") {
@@ -200,24 +213,35 @@ export async function connectSamsara(config, token) {
   throw lastError;
 }
 
+function runErrorMessage(functionName, result) {
+  if (result.status === 401) return "Token inválido.";
+  if (result.status === 403) return "El token no tiene Functions Write.";
+  if (result.status === 429) return "Samsara limita a 2 corridas por minuto. Espera e inténtalo de nuevo.";
+  if (result.status === 404) {
+    return `Este token no puede lanzar “${functionName}” por API (HTTP 404). Créalo en la misma org del dashboard, con Functions Write.`;
+  }
+  return String(result.payload?.message || result.payload?.error || `HTTP ${result.status}`);
+}
+
 export async function startFunctionRun(apiRoot, token, functionName, paramsOverride) {
-  try {
-    const payload = await samsaraFetch(apiRoot, token, `/functions/${encodeURIComponent(functionName)}/runs`, {
+  const encoded = encodeURIComponent(functionName);
+  const paths = [`/functions/${encoded}/runs`, `/beta/functions/${encoded}/runs`];
+  let last = { status: 0, payload: {} };
+  for (const path of paths) {
+    const result = await samsaraRequest(apiRoot, token, path, {
       method: "POST",
       body: { paramsOverride },
     });
-    const correlationId = payload?.data?.correlationId || payload?.correlationId;
+    last = result;
+    if (!result.ok) {
+      if (result.status === 404) continue;
+      throw new Error(runErrorMessage(functionName, result));
+    }
+    const correlationId = result.payload?.data?.correlationId || result.payload?.correlationId;
     if (!correlationId) throw new Error("Samsara no devolvió correlationId.");
     return String(correlationId);
-  } catch (error) {
-    const text = String(error?.message || "");
-    if (text.includes("no encontró") || text.includes("404")) {
-      throw new Error(
-        `La Function “${functionName}” no existe en esta org. Cópiala de Samsara → Functions.`
-      );
-    }
-    throw error;
   }
+  throw new Error(runErrorMessage(functionName, last));
 }
 
 export async function getFunctionRun(apiRoot, token, functionName, correlationId) {
