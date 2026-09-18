@@ -62,8 +62,31 @@ export function functionPageUrl(orgId, name) {
   return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?name=${encodeURIComponent(name)}`;
 }
 
-export function functionStorageUrl(orgId, name) {
-  return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?view=storage&name=${encodeURIComponent(name)}`;
+export function functionExecutionsUrl(orgId, name, { startMs, endMs, status = "SUCCESS" } = {}) {
+  const params = new URLSearchParams({
+    name,
+    view: "executions",
+    status,
+  });
+  if (Number.isFinite(startMs)) params.set("startMs", String(Math.floor(startMs)));
+  if (Number.isFinite(endMs)) params.set("endMs", String(Math.floor(endMs)));
+  return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?${params.toString()}`;
+}
+
+export function functionStorageUrl(orgId, name, folder = "") {
+  const params = new URLSearchParams({
+    view: "storage",
+    name,
+  });
+  const prefix = String(folder || "").replace(/^\/+|\/+$/g, "");
+  if (prefix) params.set("folder", prefix);
+  return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?${params.toString()}`;
+}
+
+export function storageFolderFromKey(storageKey) {
+  const parts = String(storageKey || "").split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
 }
 
 async function samsaraRequest(apiRoot, token, path, { method = "GET", body } = {}) {

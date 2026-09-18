@@ -54,7 +54,15 @@ def test_expected_key_matches_function_one_day() -> None:
 def test_function_urls_use_selected_name() -> None:
     org = "11006658"
     name = "cemex-telemetry-report-ui"
-    page = f"https://cloud.samsara.com/o/{org}/fleet/config/functions?name={name}"
-    storage = f"https://cloud.samsara.com/o/{org}/fleet/config/functions?view=storage&name={name}"
-    assert "name=cemex-telemetry-report-ui" in page
+    executions = (
+        f"https://cloud.samsara.com/o/{org}/fleet/config/functions"
+        f"?name={name}&view=executions&status=SUCCESS&startMs=1000&endMs=2000"
+    )
+    storage = (
+        f"https://cloud.samsara.com/o/{org}/fleet/config/functions"
+        f"?view=storage&name={name}&folder=CEMEX_Reportes/FAV68"
+    )
+    assert "view=executions" in executions
+    assert "status=SUCCESS" in executions
     assert "view=storage" in storage
+    assert "folder=CEMEX_Reportes/FAV68" in storage

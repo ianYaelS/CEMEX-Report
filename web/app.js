@@ -1,14 +1,15 @@
 import {
   expectedStorageKey,
-  functionPageUrl,
+  functionExecutionsUrl,
   functionStorageUrl,
+  storageFolderFromKey,
   connectSamsara,
   getOrganization,
   listFunctions,
   listVehicles,
   startFunctionRun,
   waitForFunctionRun,
-} from "./samsara.js?v=9";
+} from "./samsara.js?v=10";
 
 const $ = (id) => document.getElementById(id);
 
@@ -109,10 +110,31 @@ function renderFunctions() {
   updateFunctionLinks();
 }
 
-function updateFunctionLinks() {
+const RUN_SLACK_MS = 60_000;
+
+function updateFunctionLinks(result) {
   const name = selectedFunctionName() || state.config.functionName;
-  $("storageLink").href = functionStorageUrl(state.config.orgId, name);
-  $("functionLink").href = functionPageUrl(state.config.orgId, name);
+  const vehicle = result?.vehicle || state.vehicles.find((item) => item.id === $("vehicle").value);
+  const start = result?.start || $("start").value;
+  const end = result?.end || $("end").value;
+  const keys = vehicle
+    ? expectedStorageKey({
+        prefix: state.config.storagePrefix,
+        vehicleId: vehicle.id,
+        vehicleName: vehicle.name,
+        startDate: start,
+        endDate: end,
+      })
+    : null;
+  const folder = keys ? storageFolderFromKey(keys.storageKey) : state.config.storagePrefix;
+  const endedAt = result?.endedAt || Date.now();
+  const startedAt = result?.startedAt || endedAt;
+  $("storageLink").href = functionStorageUrl(state.config.orgId, name, folder);
+  $("functionLink").href = functionExecutionsUrl(state.config.orgId, name, {
+    startMs: startedAt - RUN_SLACK_MS,
+    endMs: endedAt + RUN_SLACK_MS,
+    status: "SUCCESS",
+  });
   $("generate").textContent = name ? `Generar con ${name}` : "Generar reporte";
 }
 
@@ -140,7 +162,7 @@ function unlockWorkspace() {
   renderVehicles("");
 }
 
-function showResult({ vehicle, start, end, correlationId, status, functionName }) {
+function showResult({ vehicle, start, end, correlationId, status, functionName, startedAt, endedAt }) {
   const keys = expectedStorageKey({
     prefix: state.config.storagePrefix,
     vehicleId: vehicle.id,
@@ -152,7 +174,7 @@ function showResult({ vehicle, start, end, correlationId, status, functionName }
   $("resultSummary").textContent = `${functionName} · ${status || "success"} · ${vehicle.name}`;
   $("storagePath").textContent = `Archivo en Storage: ${keys.storageKey}`;
   $("correlation").textContent = `correlationId: ${correlationId} · Function: ${functionName}`;
-  updateFunctionLinks();
+  updateFunctionLinks({ vehicle, start, end, startedAt, endedAt });
 }
 
 async function loadConfig() {
@@ -233,6 +255,7 @@ async function generate() {
   }
   $("generate").disabled = true;
   $("result").classList.add("hidden");
+  const startedAt = Date.now();
   setStatus("status", `Lanzando ${fn.name} en Samsara…`);
   try {
     const correlationId = await startFunctionRun(apiRoot(), token(), fn.name, {
@@ -252,6 +275,8 @@ async function generate() {
       correlationId,
       status: run.status,
       functionName: fn.name,
+      startedAt,
+      endedAt: Date.now(),
     });
     setStatus("status", `${fn.name} terminó. Ábrelo en Storage y descarga el archivo.`, "ok");
   } catch (error) {
