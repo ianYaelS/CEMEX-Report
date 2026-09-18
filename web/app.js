@@ -7,7 +7,7 @@ import {
   listVehicles,
   startFunctionRun,
   waitForFunctionRun,
-} from "./samsara.js?v=5";
+} from "./samsara.js?v=6";
 
 const $ = (id) => document.getElementById(id);
 
