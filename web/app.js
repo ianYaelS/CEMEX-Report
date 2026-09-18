@@ -1,5 +1,8 @@
 import {
   expectedStorageKey,
+  functionPageUrl,
+  functionStorageUrl,
+  listFunctions,
   listVehicles,
   resolveApiRoot,
   startFunctionRun,
@@ -10,9 +13,12 @@ const $ = (id) => document.getElementById(id);
 
 const state = {
   vehicles: [],
+  functions: [],
   unlocked: false,
   config: {
     functionName: "cemex-telemetry-report-ui",
+    functionNames: ["cemex-telemetry-report-ui"],
+    orgId: "11006658",
     apiBaseUrl: "https://api.samsara.com",
     proxyUrl: "",
     storagePrefix: "CEMEX_Reportes",
@@ -36,6 +42,14 @@ function token() {
 
 function apiRoot() {
   return resolveApiRoot(state.config);
+}
+
+function selectedFunctionName() {
+  return $("function").value.trim();
+}
+
+function selectedFunction() {
+  return state.functions.find((item) => item.name === selectedFunctionName());
 }
 
 function daySpan(start, end) {
@@ -69,9 +83,41 @@ function renderVehicles(query) {
   if (matches.some((item) => item.id === current)) select.value = current;
 }
 
+function renderFunctions() {
+  const select = $("function");
+  const preferred = state.config.functionName;
+  select.innerHTML = "";
+  if (!state.functions.length) {
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "No se encontró ninguna Function con este token";
+    select.append(empty);
+    return;
+  }
+  for (const item of state.functions) {
+    const option = document.createElement("option");
+    option.value = item.name;
+    option.textContent = item.description ? `${item.name} — ${item.description}` : item.name;
+    select.append(option);
+  }
+  if (state.functions.some((item) => item.name === preferred)) select.value = preferred;
+  updateFunctionLinks();
+}
+
+function updateFunctionLinks() {
+  const name = selectedFunctionName() || state.config.functionName;
+  $("storageLink").href = functionStorageUrl(state.config.orgId, name);
+  $("functionLink").href = functionPageUrl(state.config.orgId, name);
+  $("functionHint").textContent = name
+    ? `Se invocará POST /functions/${name}/runs. Storage: ${name}.`
+    : "Elige una Function.";
+  $("generate").textContent = name ? `Correr ${name}` : "Correr Function en Samsara";
+}
+
 function lockWorkspace() {
   state.unlocked = false;
   state.vehicles = [];
+  state.functions = [];
   $("token").value = "";
   $("workspace").classList.add("hidden");
   $("gate").classList.remove("hidden");
@@ -84,13 +130,12 @@ function unlockWorkspace() {
   state.unlocked = true;
   $("gate").classList.add("hidden");
   $("workspace").classList.remove("hidden");
-  $("fleetMeta").textContent = `${state.vehicles.length} unidades desde Samsara`;
+  $("fleetMeta").textContent = `${state.vehicles.length} unidades · ${state.functions.length} Functions`;
+  renderFunctions();
   renderVehicles("");
-  $("storageLink").href = state.config.storageUrl;
-  $("functionLink").href = state.config.functionUrl;
 }
 
-function showResult({ vehicle, start, end, correlationId, status }) {
+function showResult({ vehicle, start, end, correlationId, status, functionName }) {
   const keys = expectedStorageKey({
     prefix: state.config.storagePrefix,
     vehicleId: vehicle.id,
@@ -99,10 +144,10 @@ function showResult({ vehicle, start, end, correlationId, status }) {
     endDate: end,
   });
   $("result").classList.remove("hidden");
-  $("resultSummary").textContent =
-    `Function ${state.config.functionName} · ${status || "success"} · ${vehicle.name}`;
+  $("resultSummary").textContent = `${functionName} · ${status || "success"} · ${vehicle.name}`;
   $("storagePath").textContent = `Archivo en Storage: ${keys.storageKey}`;
-  $("correlation").textContent = `correlationId: ${correlationId}`;
+  $("correlation").textContent = `correlationId: ${correlationId} · Function: ${functionName}`;
+  updateFunctionLinks();
 }
 
 async function loadConfig() {
@@ -117,14 +162,22 @@ async function unlock() {
     return;
   }
   $("unlock").disabled = true;
-  setStatus("gateStatus", "Validando el token y leyendo todas las unidades…");
+  setStatus("gateStatus", "Validando el token, Functions y unidades…");
   try {
-    state.vehicles = await listVehicles(apiRoot(), token());
+    const [vehicles, functions] = await Promise.all([
+      listVehicles(apiRoot(), token()),
+      listFunctions(apiRoot(), token(), state.config.functionNames || [state.config.functionName]),
+    ]);
+    state.vehicles = vehicles;
+    state.functions = functions;
     if (!state.vehicles.length) {
       throw new Error("El token funcionó pero la org no tiene unidades visibles.");
     }
+    if (!state.functions.length) {
+      throw new Error("No se encontró ninguna Function. Revisa Functions Read o el nombre en Samsara.");
+    }
     unlockWorkspace();
-    setStatus("status", "Elige unidad y fechas. El reporte se genera en Samsara.", "ok");
+    setStatus("status", "Elige Function, unidad y fechas. Luego corre el run en Samsara.", "ok");
   } catch (error) {
     setStatus("gateStatus", error.message, "err");
   } finally {
@@ -134,10 +187,15 @@ async function unlock() {
 
 async function generate() {
   const vehicle = state.vehicles.find((item) => item.id === $("vehicle").value);
+  const fn = selectedFunction();
   const start = $("start").value;
   const end = $("end").value;
   if (!state.unlocked || !token()) {
     lockWorkspace();
+    return;
+  }
+  if (!fn) {
+    setStatus("status", "Elige la Function que vas a correr.", "err");
     return;
   }
   if (!vehicle || !start || !end) {
@@ -153,9 +211,9 @@ async function generate() {
     return;
   }
   $("generate").disabled = true;
-  setStatus("status", "Lanzando cemex-telemetry-report-ui en Samsara…");
+  setStatus("status", `Lanzando ${fn.name} en Samsara…`);
   try {
-    const correlationId = await startFunctionRun(apiRoot(), token(), state.config.functionName, {
+    const correlationId = await startFunctionRun(apiRoot(), token(), fn.name, {
       vehicle_id: vehicle.id,
       start_time: start,
       end_time: end,
@@ -163,19 +221,28 @@ async function generate() {
       write_storage: "true",
       include_csv: "false",
     });
-    setStatus("status", `Function en curso (${correlationId}). Esperando Storage…`);
-    const run = await waitForFunctionRun(apiRoot(), token(), state.config.functionName, correlationId);
-    showResult({ vehicle, start, end, correlationId, status: run.status });
-    setStatus("status", "Listo en Samsara Storage. Ábrelo y descarga el archivo para compararlo.", "ok");
+    setStatus("status", `${fn.name} en curso (${correlationId}). Esperando Storage…`);
+    const run = await waitForFunctionRun(apiRoot(), token(), fn.name, correlationId);
+    showResult({
+      vehicle,
+      start,
+      end,
+      correlationId,
+      status: run.status,
+      functionName: fn.name,
+    });
+    setStatus("status", `${fn.name} terminó. Ábrelo en Storage y descarga el archivo.`, "ok");
   } catch (error) {
     setStatus("status", error.message, "err");
     $("result").classList.remove("hidden");
+    updateFunctionLinks();
   } finally {
     $("generate").disabled = false;
   }
 }
 
 $("filter").addEventListener("input", (event) => renderVehicles(event.target.value));
+$("function").addEventListener("change", updateFunctionLinks);
 $("unlock").addEventListener("click", unlock);
 $("lock").addEventListener("click", lockWorkspace);
 $("generate").addEventListener("click", generate);

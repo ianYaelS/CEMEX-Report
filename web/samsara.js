@@ -53,7 +53,7 @@ function apiErrorMessage(status, payload, cors) {
     return "El token no tiene permiso de Functions. Agrégale Functions Read y Write.";
   }
   if (status === 404) {
-    return "No está la Function cemex-telemetry-report-ui en esta org.";
+    return "Esa Function no existe en esta org.";
   }
   if (status === 429) {
     return "Samsara limita a 2 corridas por minuto. Espera e inténtalo de nuevo.";
@@ -62,7 +62,15 @@ function apiErrorMessage(status, payload, cors) {
   return String(message);
 }
 
-export async function samsaraFetch(apiRoot, token, path, { method = "GET", body } = {}) {
+export function functionPageUrl(orgId, name) {
+  return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?name=${encodeURIComponent(name)}`;
+}
+
+export function functionStorageUrl(orgId, name) {
+  return `https://cloud.samsara.com/o/${orgId}/fleet/config/functions?view=storage&name=${encodeURIComponent(name)}`;
+}
+
+export async function samsaraFetch(apiRoot, token, path, { method = "GET", body, ignoreStatuses = [] } = {}) {
   const url = `${apiRoot}${path.startsWith("/") ? path : `/${path}`}`;
   let response;
   try {
@@ -86,9 +94,45 @@ export async function samsaraFetch(apiRoot, token, path, { method = "GET", body 
     payload = {};
   }
   if (!response.ok) {
+    if (ignoreStatuses.includes(response.status)) return null;
     throw new Error(apiErrorMessage(response.status, payload, false));
   }
   return payload;
+}
+
+function functionFromPayload(payload, fallbackName = "") {
+  const data = payload?.data && !Array.isArray(payload.data) ? payload.data : payload;
+  const name = String(data?.name || fallbackName).trim();
+  if (!name) return null;
+  return {
+    name,
+    description: String(data.description || "").trim(),
+  };
+}
+
+export async function getFunction(apiRoot, token, name) {
+  const payload = await samsaraFetch(apiRoot, token, `/functions/${encodeURIComponent(name)}`, {
+    ignoreStatuses: [404],
+  });
+  return payload ? functionFromPayload(payload, name) : null;
+}
+
+export async function listFunctions(apiRoot, token, candidates = []) {
+  const found = new Map();
+  const listed = await samsaraFetch(apiRoot, token, "/functions", { ignoreStatuses: [404, 405] });
+  const rows = Array.isArray(listed?.data) ? listed.data : [];
+  for (const item of rows) {
+    const parsed = functionFromPayload(item, item?.name);
+    if (parsed) found.set(parsed.name, parsed);
+  }
+  await Promise.all(
+    candidates.map(async (name) => {
+      if (!name || found.has(name)) return;
+      const parsed = await getFunction(apiRoot, token, name);
+      if (parsed) found.set(parsed.name, parsed);
+    })
+  );
+  return [...found.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
 export async function listVehicles(apiRoot, token) {

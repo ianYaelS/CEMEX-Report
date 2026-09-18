@@ -12,9 +12,8 @@
         <p class="eyebrow">Certificación Samsara · CEMEX</p>
         <h1>Informe de telemetría</h1>
         <p class="lede">
-          El token desbloquea la flota. Luego eliges unidad y fechas. El CSV lo
-          genera la Function <strong>cemex-telemetry-report-ui</strong> en
-          Samsara Storage. El token no se guarda (esta app es pública).
+          Token → Function → unidad → fechas → run. El CSV lo escribe Samsara
+          Storage. El token no se guarda.
         </p>
       </header>
 
@@ -46,6 +45,9 @@
             <p id="fleetMeta" class="hint"></p>
             <button id="lock" type="button" class="ghost">Cerrar sesión</button>
           </div>
+          <label for="function">Function de Samsara</label>
+          <select id="function"></select>
+          <p id="functionHint" class="hint">Se corre exactamente el nombre que elijas. Storage abre esa Function.</p>
           <label for="filter">Buscar unidad</label>
           <input id="filter" type="search" placeholder="Nombre, placa o id" autocomplete="off" />
           <label for="vehicle">Unidad</label>
@@ -61,7 +63,7 @@
             </div>
           </div>
           <p class="hint">Un día: mismas fechas. Máximo 7 días. Ejemplo: 2026-08-28 a 2026-09-03.</p>
-          <button id="generate" type="button">Generar en Samsara Storage</button>
+          <button id="generate" type="button">Correr Function en Samsara</button>
           <p id="status" class="status" role="status"></p>
         </section>
 

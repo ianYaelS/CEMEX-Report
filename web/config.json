@@ -1,5 +1,10 @@
 {
   "functionName": "cemex-telemetry-report-ui",
+  "functionNames": [
+    "cemex-telemetry-report-ui",
+    "cemex-telemetry-report-v2",
+    "cemex-telemetry-report"
+  ],
   "orgId": "11006658",
   "apiBaseUrl": "https://api.samsara.com",
   "proxyUrl": "",
