@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Certificación CEMEX — telemetría</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">Certificación Samsara · CEMEX</p>
+        <h1>Informe de telemetría</h1>
+        <p class="lede">
+          Elige la unidad y el rango. Se genera el mismo CSV que la Function
+          <strong>cemex-telemetry-report-ui</strong>. Lo descargas aquí; en
+          Samsara Storage queda el archivo de la Function para compararlos.
+        </p>
+      </header>
+
+      <section class="card">
+        <label for="filter">Buscar unidad</label>
+        <input id="filter" type="search" placeholder="Nombre, placa o id" autocomplete="off" />
+
+        <label for="vehicle">Unidad</label>
+        <select id="vehicle"></select>
+
+        <div class="row">
+          <div>
+            <label for="start">Fecha inicio</label>
+            <input id="start" type="date" />
+          </div>
+          <div>
+            <label for="end">Fecha fin</label>
+            <input id="end" type="date" />
+          </div>
+        </div>
+
+        <p id="tokenHint" class="hint hidden">
+          El servidor no tiene <code>api_key</code>. Pégalo solo en esta sesión (no se guarda).
+        </p>
+        <input id="token" class="hidden" type="password" placeholder="api_key de la Function" />
+
+        <button id="generate" type="button">Generar y descargar CSV</button>
+        <p id="status" class="status" role="status"></p>
+      </section>
+
+      <section id="result" class="card result hidden">
+        <h2>Archivo listo</h2>
+        <p id="resultSummary"></p>
+        <p class="compare">
+          El archivo se generó en el directorio de Storage de Samsara
+          (<strong>cemex-telemetry-report-ui</strong>). Ábrelo y busca el mismo
+          nombre que descargaste para compararlos.
+        </p>
+        <div class="actions">
+          <button id="downloadAgain" type="button">Volver a descargar</button>
+          <a id="storageLink" class="button-link" href="#" target="_blank" rel="noopener">
+            Abrir Storage en Samsara
+          </a>
+        </div>
+        <p id="storagePath" class="hint"></p>
+      </section>
+    </main>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
