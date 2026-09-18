@@ -12,7 +12,7 @@ import {
   startFunctionRun,
   triggerBrowserDownload,
   waitForFunctionRun,
-} from "./samsara.js?v=11";
+} from "./samsara.js?v=12";
 
 const $ = (id) => document.getElementById(id);
 

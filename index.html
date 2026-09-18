@@ -2,13 +2,93 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="refresh" content="0; url=./web/" />
-    <title>Informe CEMEX</title>
-    <script>
-      location.replace("./web/");
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <title>CEMEX · Samsara</title>
+    <link rel="icon" href="./web/logo-samsara-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./web/styles.css?v=12" />
   </head>
   <body>
-    <p><a href="./web/">Abrir informe CEMEX</a></p>
+    <div class="signal" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="logo" href="https://www.samsara.com" target="_blank" rel="noopener" aria-label="Samsara">
+        <img src="./web/logo-samsara.svg" alt="Samsara" width="168" height="27" />
+      </a>
+      <p class="topbar-product">CEMEX</p>
+    </header>
+
+    <main class="shell">
+      <section class="intro">
+        <p class="kicker">Reporte de telemetría</p>
+        <h1>Genera el CSV en Samsara</h1>
+        <p class="lede">Pega el token, elige Function, unidad y fechas. El archivo queda en Storage.</p>
+      </section>
+
+      <section id="gate" class="card">
+        <p class="card-title">Acceso</p>
+        <label for="token">API token</label>
+        <input
+          id="token"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="samsara_api_…"
+        />
+        <p class="field-help">No se guarda. Solo vive en esta sesión.</p>
+        <button id="unlock" type="button">Continuar</button>
+        <p id="gateStatus" class="status" role="status"></p>
+      </section>
+
+      <section id="workspace" class="hidden">
+        <section class="card">
+          <div class="toolbar">
+            <p id="fleetMeta" class="hint"></p>
+            <button id="lock" type="button" class="ghost">Salir</button>
+          </div>
+
+          <p class="card-title">Corrida</p>
+
+          <label for="function">Function</label>
+          <select id="function"></select>
+          <p class="field-help">Nombre exacto. El token tiene que ser de esta misma org, con Functions Write.</p>
+
+          <label for="filter">Unidad</label>
+          <input id="filter" type="search" placeholder="Buscar nombre, placa o id" autocomplete="off" />
+          <select id="vehicle"></select>
+
+          <div class="row">
+            <div>
+              <label for="start">Inicio</label>
+              <input id="start" type="date" />
+            </div>
+            <div>
+              <label for="end">Fin</label>
+              <input id="end" type="date" />
+            </div>
+          </div>
+          <p class="field-help">Hasta 7 días. El CSV se escribe en Samsara Storage.</p>
+
+          <button id="generate" type="button">Generar reporte</button>
+          <p id="status" class="status" role="status"></p>
+        </section>
+
+        <section id="result" class="card result hidden">
+          <p class="eyebrow">Listo en Samsara Storage</p>
+          <p id="resultSummary"></p>
+          <p id="storagePath" class="path"></p>
+          <p id="correlation" class="hint"></p>
+          <button id="downloadCsv" type="button" disabled>Descargar CSV</button>
+          <div class="actions">
+            <a id="storageLink" class="button-link" href="#" target="_blank" rel="noopener">Abrir Storage</a>
+            <a id="functionLink" class="button-link ghost-link" href="#" target="_blank" rel="noopener">Ver Function</a>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Samsara y el logo de Samsara son marcas de Samsara Inc.
+    </footer>
+    <script src="./web/app.js?v=12" type="module"></script>
   </body>
 </html>
