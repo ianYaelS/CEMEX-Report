@@ -4,12 +4,15 @@ import {
   functionStorageUrl,
   storageFolderFromKey,
   connectSamsara,
+  csvFromRun,
   getOrganization,
+  getStorageDownloadUrl,
   listFunctions,
   listVehicles,
   startFunctionRun,
+  triggerBrowserDownload,
   waitForFunctionRun,
-} from "./samsara.js?v=10";
+} from "./samsara.js?v=11";
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,6 +20,7 @@ const state = {
   vehicles: [],
   functions: [],
   org: null,
+  lastFile: null,
   unlocked: false,
   apiRoot: "",
   config: {
@@ -144,10 +148,12 @@ function lockWorkspace() {
   state.vehicles = [];
   state.functions = [];
   state.org = null;
+  state.lastFile = null;
   $("token").value = "";
   $("workspace").classList.add("hidden");
   $("gate").classList.remove("hidden");
   $("result").classList.add("hidden");
+  $("downloadCsv").disabled = true;
   setStatus("gateStatus", "Sesión cerrada. El token no quedó guardado.", "");
   $("token").focus();
 }
@@ -162,7 +168,7 @@ function unlockWorkspace() {
   renderVehicles("");
 }
 
-function showResult({ vehicle, start, end, correlationId, status, functionName, startedAt, endedAt }) {
+function showResult({ vehicle, start, end, correlationId, status, functionName, startedAt, endedAt, csv }) {
   const keys = expectedStorageKey({
     prefix: state.config.storagePrefix,
     vehicleId: vehicle.id,
@@ -174,6 +180,8 @@ function showResult({ vehicle, start, end, correlationId, status, functionName, 
   $("resultSummary").textContent = `${functionName} · ${status || "success"} · ${vehicle.name}`;
   $("storagePath").textContent = `Archivo en Storage: ${keys.storageKey}`;
   $("correlation").textContent = `correlationId: ${correlationId} · Function: ${functionName}`;
+  state.lastFile = { storageKey: keys.storageKey, filename: keys.filename, csv: csv || "" };
+  $("downloadCsv").disabled = false;
   updateFunctionLinks({ vehicle, start, end, startedAt, endedAt });
 }
 
@@ -255,6 +263,8 @@ async function generate() {
   }
   $("generate").disabled = true;
   $("result").classList.add("hidden");
+  $("downloadCsv").disabled = true;
+  state.lastFile = null;
   const startedAt = Date.now();
   setStatus("status", `Lanzando ${fn.name} en Samsara…`);
   try {
@@ -268,6 +278,7 @@ async function generate() {
     });
     setStatus("status", `${fn.name} en curso (${correlationId}). Esperando Storage…`);
     const run = await waitForFunctionRun(apiRoot(), token(), fn.name, correlationId);
+    const csv = csvFromRun(run);
     showResult({
       vehicle,
       start,
@@ -277,6 +288,7 @@ async function generate() {
       functionName: fn.name,
       startedAt,
       endedAt: Date.now(),
+      csv,
     });
     setStatus("status", `${fn.name} terminó. Ábrelo en Storage y descarga el archivo.`, "ok");
   } catch (error) {
@@ -287,11 +299,40 @@ async function generate() {
   }
 }
 
+async function downloadCsv() {
+  const file = state.lastFile;
+  if (!file?.filename && !file?.storageKey) {
+    setStatus("status", "Primero genera el reporte.", "err");
+    return;
+  }
+  $("downloadCsv").disabled = true;
+  setStatus("status", "Descargando CSV…");
+  try {
+    if (file.csv) {
+      await triggerBrowserDownload(file.filename, { text: file.csv });
+    } else {
+      const url = await getStorageDownloadUrl(apiRoot(), token(), file.storageKey);
+      await triggerBrowserDownload(file.filename, { url });
+    }
+    setStatus("status", `Descarga lista: ${file.filename}`, "ok");
+  } catch (error) {
+    const text = String(error.message || "");
+    if (text.includes("403") || text.includes("permiso")) {
+      setStatus("status", "El token necesita Functions Storage Read para descargar.", "err");
+    } else {
+      setStatus("status", error.message, "err");
+    }
+  } finally {
+    $("downloadCsv").disabled = false;
+  }
+}
+
 $("filter").addEventListener("input", (event) => renderVehicles(event.target.value));
 $("function").addEventListener("change", updateFunctionLinks);
 $("unlock").addEventListener("click", unlock);
 $("lock").addEventListener("click", lockWorkspace);
 $("generate").addEventListener("click", generate);
+$("downloadCsv").addEventListener("click", downloadCsv);
 $("token").addEventListener("keydown", (event) => {
   if (event.key === "Enter") unlock();
 });

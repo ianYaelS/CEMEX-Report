@@ -280,6 +280,63 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function csvFromRun(run) {
+  const bags = [run, run?.result, run?.output, run?.data, run?.response];
+  for (const bag of bags) {
+    const csv = bag?.csv;
+    if (typeof csv === "string" && csv.trim()) return csv;
+  }
+  return "";
+}
+
+export async function getStorageDownloadUrl(apiRoot, token, storageKey) {
+  const payload = await samsaraFetch(
+    apiRoot,
+    token,
+    `/functions-storage/files?name=${encodeURIComponent(storageKey)}`
+  );
+  const data = payload?.data && !Array.isArray(payload.data) ? payload.data : payload;
+  const listed = Array.isArray(data?.urls) ? data.urls : [];
+  const download = listed.find((item) => String(item?.urlType || "").toLowerCase().includes("download"));
+  const url = data?.downloadGet?.url || download?.url || data?.url;
+  if (!url) {
+    throw new Error("Samsara no dio URL de descarga. Agrega Functions Storage Read al token.");
+  }
+  return url;
+}
+
+export async function triggerBrowserDownload(filename, { url, text } = {}) {
+  if (text) {
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+    return;
+  }
+  if (!url) throw new Error("No hay archivo para descargar.");
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch (_error) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.click();
+  }
+}
+
 export async function waitForFunctionRun(apiRoot, token, functionName, correlationId, { timeoutMs = 90000 } = {}) {
   const started = Date.now();
   let last = { status: "started" };

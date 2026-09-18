@@ -66,3 +66,5 @@ def test_function_urls_use_selected_name() -> None:
     assert "status=SUCCESS" in executions
     assert "view=storage" in storage
     assert "folder=CEMEX_Reportes/FAV68" in storage
+    download = "/functions-storage/files?name=CEMEX_Reportes/FAV68/2026-08-31_id_FAV68.csv"
+    assert "functions-storage/files" in download
