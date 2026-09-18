@@ -1,31 +1,33 @@
 # Portal CEMEX
 
-El cliente entra aquí: elige unidad, filtra fechas, descarga el CSV y abre Storage de Samsara para comparar el archivo.
-
-La lógica del informe es la Function V2 (`functions/cemex-telemetry-report-v2`). Esta carpeta solo la expone.
+El cliente pega el **api_key** (solo esta sesión), elige unidad y fechas. La página invoca la Function **cemex-telemetry-report-ui** en Samsara (`POST /functions/{name}/runs`). El CSV se crea en Storage, no en GitHub.
 
 Storage: [cemex-telemetry-report-ui](https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report-ui)
 
-## Local
+Omar: no es SSH. Es la API de Functions. El token se pega a mano porque el repo es público.
+
+## Token
+
+Scopes: Read Vehicles, Read Vehicle Statistics, Functions Read, Functions Write. Nunca va en el repo.
+
+## Local (relay incluido)
 
 ```bash
-export api_key="…"   # el mismo Event parameter de la Function
 python web/server.py
 ```
 
-Abre `http://127.0.0.1:8787`. El token también puede ir en `SAMSARA_API_TOKEN`. Si el servidor no lo tiene, el cliente lo pega en la sesión (no se guarda).
+Abre `http://127.0.0.1:8787`. El servidor solo reenvía a `api.samsara.com` y sirve el HTML. No guarda el token.
 
-## GitHub
+## GitHub Pages
 
-1. Sube este repo.
-2. En el repo: **Settings → Pages → GitHub Actions**. El workflow `.github/workflows/pages.yml` publica `web/`.
-3. GitHub Pages sirve la interfaz (unidad, fechas, enlace a Storage).
-4. Para generar y descargar el CSV hace falta el servidor (`web/server.py`): mismo repo, en tu máquina o en un host que apunte a este GitHub. El token va en la variable de entorno `api_key`, nunca en el frontend ni en el repo.
+`https://ianyaels.github.io/CEMEX-Report/` es la UI. El navegador **bloquea** llamadas directas a Samsara (CORS).
+
+1. Corre el server local y trabaja en `127.0.0.1:8787`, o
+2. Despliega `proxy/worker.js` (Cloudflare Worker) y pega esa URL en **Relay** (solo sesión) o en `web/config.json` → `proxyUrl`.
 
 ## Qué ve el cliente
 
-1. Busca y selecciona la unidad.
-2. Pone fecha inicio y fin (mismo día = 24 h; máximo 7 días).
-3. **Generar y descargar CSV**.
-4. El mensaje le dice que el archivo también está en Storage de Samsara.
-5. **Abrir Storage en Samsara** → busca el mismo nombre que descargó y compara.
+1. Pega el token.
+2. Carga unidades.
+3. Elige fechas y **Generar en Samsara Storage**.
+4. Abre Storage y busca el nombre que muestra la página. Descarga ahí y compara.

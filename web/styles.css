@@ -61,7 +61,12 @@ label {
   font-weight: 600;
 }
 
-label:first-child {
+.card h2 {
+  font-size: 18px;
+}
+
+.card h2 + .hint,
+.card h2 + label {
   margin-top: 0;
 }
 
@@ -137,6 +142,36 @@ button:disabled {
 .hint {
   color: var(--muted);
   font-size: 13px;
+}
+
+.path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  word-break: break-all;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.button-link.secondary {
+  background: #fff;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.button-link.secondary:hover {
+  background: #eef3f8;
+}
+
+.advanced {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.advanced summary {
+  cursor: pointer;
+  margin-bottom: 8px;
 }
 
 .hidden {

@@ -1,17 +1,26 @@
+import {
+  expectedStorageKey,
+  listVehicles,
+  resolveApiRoot,
+  startFunctionRun,
+  waitForFunctionRun,
+} from "./samsara.js";
+
 const $ = (id) => document.getElementById(id);
 
 const state = {
   vehicles: [],
-  last: null,
   config: {
+    functionName: "cemex-telemetry-report-ui",
+    apiBaseUrl: "https://api.samsara.com",
+    proxyUrl: "",
+    storagePrefix: "CEMEX_Reportes",
     storageUrl:
       "https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report-ui",
+    functionUrl: "https://cloud.samsara.com/o/11006658/fleet/config/functions?name=cemex-telemetry-report-ui",
+    maxRangeDays: 7,
   },
 };
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function setStatus(text, kind) {
   const node = $("status");
@@ -23,20 +32,18 @@ function token() {
   return $("token").value.trim();
 }
 
-function headers() {
-  const out = { "Content-Type": "application/json" };
-  if (token()) out["X-Api-Key"] = token();
-  return out;
+function sessionProxy() {
+  return $("proxy").value.trim();
 }
 
-function downloadCsv(filename, csv) {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+function apiRoot() {
+  return resolveApiRoot({ ...state.config, proxyUrl: sessionProxy() || state.config.proxyUrl });
+}
+
+function daySpan(start, end) {
+  const a = new Date(`${start}T00:00:00`);
+  const b = new Date(`${end}T00:00:00`);
+  return Math.round((b - a) / 86400000) + 1;
 }
 
 function renderVehicles(query) {
@@ -50,8 +57,8 @@ function renderVehicles(query) {
   select.innerHTML = "";
   if (!matches.length) {
     const empty = document.createElement("option");
-    empty.textContent = "Sin unidades para ese filtro";
     empty.value = "";
+    empty.textContent = state.vehicles.length ? "Sin unidades para ese filtro" : "Carga la flota con el token";
     select.append(empty);
     return;
   }
@@ -64,91 +71,103 @@ function renderVehicles(query) {
   if (matches.some((item) => item.id === current)) select.value = current;
 }
 
-function showResult(payload) {
-  state.last = payload;
+function showResult({ vehicle, start, end, correlationId, status }) {
+  const keys = expectedStorageKey({
+    prefix: state.config.storagePrefix,
+    vehicleId: vehicle.id,
+    vehicleName: vehicle.name,
+    startDate: start,
+    endDate: end,
+  });
   $("result").classList.remove("hidden");
   $("resultSummary").textContent =
-    `${payload.filename} · ${payload.rowCount.toLocaleString("es-MX")} filas · ${payload.validationStatus} · ${payload.vehicleName}`;
-  $("storagePath").textContent = `Ruta en Storage: ${payload.storageKey}`;
-  $("storageLink").href = payload.storageUrl || state.config.storageUrl;
+    `Function ${state.config.functionName} · ${status || "success"} · ${vehicle.name}`;
+  $("storagePath").textContent = `Archivo en Storage: ${keys.storageKey}`;
+  $("correlation").textContent = `correlationId: ${correlationId}`;
+  $("storageLink").href = state.config.storageUrl;
+  $("functionLink").href = state.config.functionUrl;
 }
 
 async function loadConfig() {
-  try {
-    const response = await fetch("/api/config");
-    if (response.ok) {
-      state.config = await response.json();
-      $("storageLink").href = state.config.storageUrl;
-      return;
-    }
-  } catch (_error) {
-    /* GitHub Pages sirve solo estáticos */
-  }
-  const fallback = await fetch("./config.json");
-  if (fallback.ok) state.config = await fallback.json();
+  const response = await fetch("./config.json", { cache: "no-store" });
+  if (response.ok) state.config = { ...state.config, ...(await response.json()) };
   $("storageLink").href = state.config.storageUrl;
+  $("functionLink").href = state.config.functionUrl;
+  if (state.config.proxyUrl) $("proxy").value = state.config.proxyUrl;
 }
 
-async function loadVehicles() {
-  const response = await fetch("/api/vehicles", { headers: headers() });
-  if (response.status === 404) {
-    throw new Error(
-      "Esta página en GitHub Pages es solo la interfaz. Para generar el CSV corre python web/server.py desde el repo (o despliega ese servidor)."
-    );
+async function loadFleet() {
+  if (!token()) {
+    setStatus("Pega el api_key de esta sesión.", "err");
+    $("token").focus();
+    return;
   }
-  const payload = await response.json();
-  if (!response.ok) {
-    if (response.status === 401) {
-      $("tokenHint").classList.remove("hidden");
-      $("token").classList.remove("hidden");
-    }
-    throw new Error(payload.error || "No se pudo listar la flota");
+  $("loadFleet").disabled = true;
+  setStatus("Leyendo la flota en Samsara…");
+  try {
+    state.vehicles = await listVehicles(apiRoot(), token());
+    renderVehicles($("filter").value);
+    setStatus(`${state.vehicles.length} unidades. Elige una y genera el reporte en Samsara.`, "ok");
+  } catch (error) {
+    setStatus(error.message, "err");
+  } finally {
+    $("loadFleet").disabled = false;
   }
-  state.vehicles = payload.vehicles || [];
-  renderVehicles($("filter").value);
 }
 
 async function generate() {
-  const vehicleId = $("vehicle").value;
-  const startTime = $("start").value;
-  const endTime = $("end").value;
-  if (!vehicleId || !startTime || !endTime) {
-    setStatus("Selecciona unidad y ambas fechas.", "err");
+  const vehicle = state.vehicles.find((item) => item.id === $("vehicle").value);
+  const start = $("start").value;
+  const end = $("end").value;
+  if (!token()) {
+    setStatus("Pega el api_key de esta sesión.", "err");
+    return;
+  }
+  if (!vehicle || !start || !end) {
+    setStatus("Carga la flota, elige unidad y ambas fechas.", "err");
+    return;
+  }
+  if (end < start) {
+    setStatus("La fecha fin no puede ser anterior al inicio.", "err");
+    return;
+  }
+  const days = daySpan(start, end);
+  if (days > (state.config.maxRangeDays || 7)) {
+    setStatus(`Máximo ${state.config.maxRangeDays || 7} días.`, "err");
     return;
   }
   $("generate").disabled = true;
-  setStatus("Generando el informe con la misma lógica que la Function…");
+  setStatus("Invocando cemex-telemetry-report-ui en Samsara…");
   try {
-    const response = await fetch("/api/report", {
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({
-        vehicle_id: vehicleId,
-        start_time: startTime,
-        end_time: endTime,
-      }),
+    const correlationId = await startFunctionRun(apiRoot(), token(), state.config.functionName, {
+      vehicle_id: vehicle.id,
+      start_time: start,
+      end_time: end,
+      api_key: token(),
+      write_storage: "true",
+      include_csv: "false",
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Falló la generación");
-    downloadCsv(payload.filename, payload.csv);
-    showResult(payload);
-    setStatus("CSV descargado. Ábrelo en Samsara Storage y compara ambos archivos.", "ok");
+    setStatus(`Function en curso (${correlationId}). Esperando Storage…`);
+    const run = await waitForFunctionRun(apiRoot(), token(), state.config.functionName, correlationId);
+    showResult({ vehicle, start, end, correlationId, status: run.status });
+    setStatus("Listo en Samsara Storage. Ábrelo y busca el archivo para descargarlo y compararlo.", "ok");
   } catch (error) {
     setStatus(error.message, "err");
+    $("result").classList.remove("hidden");
+    $("storageLink").href = state.config.storageUrl;
+    $("functionLink").href = state.config.functionUrl;
   } finally {
     $("generate").disabled = false;
   }
 }
 
 $("filter").addEventListener("input", (event) => renderVehicles(event.target.value));
+$("loadFleet").addEventListener("click", loadFleet);
 $("generate").addEventListener("click", generate);
-$("downloadAgain").addEventListener("click", () => {
-  if (state.last) downloadCsv(state.last.filename, state.last.csv);
+$("token").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") loadFleet();
 });
 $("start").value = "2026-08-31";
 $("end").value = "2026-08-31";
-if (!$("start").value) $("start").value = todayIso();
 
-loadConfig()
-  .then(loadVehicles)
-  .catch((error) => setStatus(error.message, "err"));
+loadConfig().catch((error) => setStatus(error.message, "err"));
