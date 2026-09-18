@@ -18,12 +18,12 @@ python web/server.py
 
 Abre `http://127.0.0.1:8787`. El servidor solo reenvía a `api.samsara.com` y sirve el HTML. No guarda el token.
 
-## GitHub Pages
+## GitHub Pages vs app desbloqueable
 
-`https://ianyaels.github.io/CEMEX-Report/` es la UI. El navegador **bloquea** llamadas directas a Samsara (CORS).
+`https://ianyaels.github.io/CEMEX-Report/` muestra la llave (token). El navegador **bloquea** `api.samsara.com` (CORS), así que el desbloqueo real se hace así:
 
-1. Corre el server local y trabaja en `127.0.0.1:8787`, o
-2. Despliega `proxy/worker.js` (Cloudflare Worker) y pega esa URL en **Relay** (solo sesión) o en `web/config.json` → `proxyUrl`.
+1. Local: `python web/server.py` → `http://127.0.0.1:8787` (mismo UI, sí llama a Samsara).
+2. Público desde este GitHub: [Importar el repo en Netlify](https://app.netlify.com/start/deploy?repository=https://github.com/ianYaelS/CEMEX-Report) (login con GitHub). Queda `/samsara` en el mismo dominio: pegas el token, carga la flota y corre la Function.
 
 ## Qué ve el cliente
 

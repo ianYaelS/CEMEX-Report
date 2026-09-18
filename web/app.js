@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 
 const state = {
   vehicles: [],
+  unlocked: false,
   config: {
     functionName: "cemex-telemetry-report-ui",
     apiBaseUrl: "https://api.samsara.com",
@@ -22,8 +23,9 @@ const state = {
   },
 };
 
-function setStatus(text, kind) {
-  const node = $("status");
+function setStatus(id, text, kind) {
+  const node = $(id);
+  if (!node) return;
   node.textContent = text;
   node.className = `status ${kind || ""}`;
 }
@@ -32,12 +34,8 @@ function token() {
   return $("token").value.trim();
 }
 
-function sessionProxy() {
-  return $("proxy").value.trim();
-}
-
 function apiRoot() {
-  return resolveApiRoot({ ...state.config, proxyUrl: sessionProxy() || state.config.proxyUrl });
+  return resolveApiRoot(state.config);
 }
 
 function daySpan(start, end) {
@@ -58,7 +56,7 @@ function renderVehicles(query) {
   if (!matches.length) {
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = state.vehicles.length ? "Sin unidades para ese filtro" : "Carga la flota con el token";
+    empty.textContent = "Sin unidades para ese filtro";
     select.append(empty);
     return;
   }
@@ -69,6 +67,27 @@ function renderVehicles(query) {
     select.append(option);
   }
   if (matches.some((item) => item.id === current)) select.value = current;
+}
+
+function lockWorkspace() {
+  state.unlocked = false;
+  state.vehicles = [];
+  $("token").value = "";
+  $("workspace").classList.add("hidden");
+  $("gate").classList.remove("hidden");
+  $("result").classList.add("hidden");
+  setStatus("gateStatus", "Sesión cerrada. El token no quedó guardado.", "");
+  $("token").focus();
+}
+
+function unlockWorkspace() {
+  state.unlocked = true;
+  $("gate").classList.add("hidden");
+  $("workspace").classList.remove("hidden");
+  $("fleetMeta").textContent = `${state.vehicles.length} unidades desde Samsara`;
+  renderVehicles("");
+  $("storageLink").href = state.config.storageUrl;
+  $("functionLink").href = state.config.functionUrl;
 }
 
 function showResult({ vehicle, start, end, correlationId, status }) {
@@ -84,34 +103,32 @@ function showResult({ vehicle, start, end, correlationId, status }) {
     `Function ${state.config.functionName} · ${status || "success"} · ${vehicle.name}`;
   $("storagePath").textContent = `Archivo en Storage: ${keys.storageKey}`;
   $("correlation").textContent = `correlationId: ${correlationId}`;
-  $("storageLink").href = state.config.storageUrl;
-  $("functionLink").href = state.config.functionUrl;
 }
 
 async function loadConfig() {
   const response = await fetch("./config.json", { cache: "no-store" });
   if (response.ok) state.config = { ...state.config, ...(await response.json()) };
-  $("storageLink").href = state.config.storageUrl;
-  $("functionLink").href = state.config.functionUrl;
-  if (state.config.proxyUrl) $("proxy").value = state.config.proxyUrl;
 }
 
-async function loadFleet() {
+async function unlock() {
   if (!token()) {
-    setStatus("Pega el api_key de esta sesión.", "err");
+    setStatus("gateStatus", "Pega el API token para desbloquear.", "err");
     $("token").focus();
     return;
   }
-  $("loadFleet").disabled = true;
-  setStatus("Leyendo la flota en Samsara…");
+  $("unlock").disabled = true;
+  setStatus("gateStatus", "Validando el token y leyendo todas las unidades…");
   try {
     state.vehicles = await listVehicles(apiRoot(), token());
-    renderVehicles($("filter").value);
-    setStatus(`${state.vehicles.length} unidades. Elige una y genera el reporte en Samsara.`, "ok");
+    if (!state.vehicles.length) {
+      throw new Error("El token funcionó pero la org no tiene unidades visibles.");
+    }
+    unlockWorkspace();
+    setStatus("status", "Elige unidad y fechas. El reporte se genera en Samsara.", "ok");
   } catch (error) {
-    setStatus(error.message, "err");
+    setStatus("gateStatus", error.message, "err");
   } finally {
-    $("loadFleet").disabled = false;
+    $("unlock").disabled = false;
   }
 }
 
@@ -119,25 +136,24 @@ async function generate() {
   const vehicle = state.vehicles.find((item) => item.id === $("vehicle").value);
   const start = $("start").value;
   const end = $("end").value;
-  if (!token()) {
-    setStatus("Pega el api_key de esta sesión.", "err");
+  if (!state.unlocked || !token()) {
+    lockWorkspace();
     return;
   }
   if (!vehicle || !start || !end) {
-    setStatus("Carga la flota, elige unidad y ambas fechas.", "err");
+    setStatus("status", "Elige unidad y ambas fechas.", "err");
     return;
   }
   if (end < start) {
-    setStatus("La fecha fin no puede ser anterior al inicio.", "err");
+    setStatus("status", "La fecha fin no puede ser anterior al inicio.", "err");
     return;
   }
-  const days = daySpan(start, end);
-  if (days > (state.config.maxRangeDays || 7)) {
-    setStatus(`Máximo ${state.config.maxRangeDays || 7} días.`, "err");
+  if (daySpan(start, end) > (state.config.maxRangeDays || 7)) {
+    setStatus("status", `Máximo ${state.config.maxRangeDays || 7} días.`, "err");
     return;
   }
   $("generate").disabled = true;
-  setStatus("Invocando cemex-telemetry-report-ui en Samsara…");
+  setStatus("status", "Lanzando cemex-telemetry-report-ui en Samsara…");
   try {
     const correlationId = await startFunctionRun(apiRoot(), token(), state.config.functionName, {
       vehicle_id: vehicle.id,
@@ -147,27 +163,26 @@ async function generate() {
       write_storage: "true",
       include_csv: "false",
     });
-    setStatus(`Function en curso (${correlationId}). Esperando Storage…`);
+    setStatus("status", `Function en curso (${correlationId}). Esperando Storage…`);
     const run = await waitForFunctionRun(apiRoot(), token(), state.config.functionName, correlationId);
     showResult({ vehicle, start, end, correlationId, status: run.status });
-    setStatus("Listo en Samsara Storage. Ábrelo y busca el archivo para descargarlo y compararlo.", "ok");
+    setStatus("status", "Listo en Samsara Storage. Ábrelo y descarga el archivo para compararlo.", "ok");
   } catch (error) {
-    setStatus(error.message, "err");
+    setStatus("status", error.message, "err");
     $("result").classList.remove("hidden");
-    $("storageLink").href = state.config.storageUrl;
-    $("functionLink").href = state.config.functionUrl;
   } finally {
     $("generate").disabled = false;
   }
 }
 
 $("filter").addEventListener("input", (event) => renderVehicles(event.target.value));
-$("loadFleet").addEventListener("click", loadFleet);
+$("unlock").addEventListener("click", unlock);
+$("lock").addEventListener("click", lockWorkspace);
 $("generate").addEventListener("click", generate);
 $("token").addEventListener("keydown", (event) => {
-  if (event.key === "Enter") loadFleet();
+  if (event.key === "Enter") unlock();
 });
 $("start").value = "2026-08-31";
 $("end").value = "2026-08-31";
 
-loadConfig().catch((error) => setStatus(error.message, "err"));
+loadConfig().catch((error) => setStatus("gateStatus", error.message, "err"));

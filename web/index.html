@@ -10,22 +10,25 @@
     <main class="shell">
       <header>
         <p class="eyebrow">Certificación Samsara · CEMEX</p>
-        <h1>Generar reporte en Samsara</h1>
+        <h1>Informe de telemetría</h1>
         <p class="lede">
-          Esta página <strong>no crea el CSV</strong>. Dispara la Function
-          <strong>cemex-telemetry-report-ui</strong> en Samsara. El archivo queda
-          en Storage. El token se pega aquí y no se guarda (la app es pública).
+          El token desbloquea la flota. Luego eliges unidad y fechas. El CSV lo
+          genera la Function <strong>cemex-telemetry-report-ui</strong> en
+          Samsara Storage. El token no se guarda (esta app es pública).
         </p>
       </header>
 
-      <section class="card">
-        <h2>1. Token de esta sesión</h2>
+      <section id="gate" class="card">
+        <h2>Llave de acceso</h2>
         <p class="hint">
-          API token de la org CEMEX con <strong>Read Vehicles</strong>,
+          Pega el API token de esta org: <strong>Read Vehicles</strong>,
           <strong>Read Vehicle Statistics</strong>, <strong>Functions Read</strong>
-          y <strong>Functions Write</strong>. No lo subas a GitHub.
+          y <strong>Functions Write</strong>. En github.io el navegador puede
+          bloquear Samsara; usa <code>http://127.0.0.1:8787</code> o publica este
+          mismo repo en
+          <a href="https://app.netlify.com/start/deploy?repository=https://github.com/ianYaelS/CEMEX-Report">Netlify</a>.
         </p>
-        <label for="token">api_key</label>
+        <label for="token">API token</label>
         <input
           id="token"
           type="password"
@@ -33,64 +36,54 @@
           spellcheck="false"
           placeholder="samsara_api_…"
         />
-        <button id="loadFleet" type="button">Cargar unidades desde Samsara</button>
+        <button id="unlock" type="button">Desbloquear y cargar unidades</button>
+        <p id="gateStatus" class="status" role="status"></p>
       </section>
 
-      <section class="card">
-        <h2>2. Unidad y fechas</h2>
-        <label for="filter">Buscar unidad</label>
-        <input id="filter" type="search" placeholder="Nombre, placa o id" autocomplete="off" />
-
-        <label for="vehicle">Unidad</label>
-        <select id="vehicle">
-          <option value="">Carga la flota con el token</option>
-        </select>
-
-        <div class="row">
-          <div>
-            <label for="start">Fecha inicio</label>
-            <input id="start" type="date" />
+      <section id="workspace" class="hidden">
+        <section class="card">
+          <div class="toolbar">
+            <p id="fleetMeta" class="hint"></p>
+            <button id="lock" type="button" class="ghost">Cerrar sesión</button>
           </div>
-          <div>
-            <label for="end">Fecha fin (incluida)</label>
-            <input id="end" type="date" />
+          <label for="filter">Buscar unidad</label>
+          <input id="filter" type="search" placeholder="Nombre, placa o id" autocomplete="off" />
+          <label for="vehicle">Unidad</label>
+          <select id="vehicle"></select>
+          <div class="row">
+            <div>
+              <label for="start">Fecha inicio</label>
+              <input id="start" type="date" />
+            </div>
+            <div>
+              <label for="end">Fecha fin (incluida)</label>
+              <input id="end" type="date" />
+            </div>
           </div>
-        </div>
-        <p class="hint">Un día: mismas fechas. Máximo 7 días. Ejemplo 7 días: 2026-08-28 a 2026-09-03.</p>
+          <p class="hint">Un día: mismas fechas. Máximo 7 días. Ejemplo: 2026-08-28 a 2026-09-03.</p>
+          <button id="generate" type="button">Generar en Samsara Storage</button>
+          <p id="status" class="status" role="status"></p>
+        </section>
 
-        <button id="generate" type="button">Generar en Samsara Storage</button>
-        <p id="status" class="status" role="status"></p>
+        <section id="result" class="card result hidden">
+          <h2>Archivo generado en Samsara</h2>
+          <p id="resultSummary"></p>
+          <p class="compare">
+            El reporte no vive en GitHub. Ábrelo en Storage, busca este nombre y
+            descárgalo ahí para compararlo.
+          </p>
+          <p id="storagePath" class="path"></p>
+          <p id="correlation" class="hint"></p>
+          <div class="actions">
+            <a id="storageLink" class="button-link" href="#" target="_blank" rel="noopener">
+              Abrir Storage en Samsara
+            </a>
+            <a id="functionLink" class="button-link secondary" href="#" target="_blank" rel="noopener">
+              Abrir la Function
+            </a>
+          </div>
+        </section>
       </section>
-
-      <section id="result" class="card result hidden">
-        <h2>3. El archivo ya está en Samsara</h2>
-        <p id="resultSummary"></p>
-        <p class="compare">
-          Busca en Storage el mismo nombre que aparece abajo. Compáralo con lo
-          que descargues desde Samsara. GitHub no guarda una copia.
-        </p>
-        <p id="storagePath" class="path"></p>
-        <p id="correlation" class="hint"></p>
-        <div class="actions">
-          <a id="storageLink" class="button-link" href="#" target="_blank" rel="noopener">
-            Abrir Storage en Samsara
-          </a>
-          <a id="functionLink" class="button-link secondary" href="#" target="_blank" rel="noopener">
-            Abrir la Function
-          </a>
-        </div>
-      </section>
-
-      <details class="advanced">
-        <summary>Relay (solo si GitHub Pages bloquea Samsara)</summary>
-        <p class="hint">
-          El navegador no puede hablar directo con api.samsara.com. En local usa
-          <code>python web/server.py</code>. En la URL pública pega aquí la URL
-          del relay (Cloudflare Worker o ese servidor) solo en esta sesión.
-        </p>
-        <label for="proxy">URL del relay</label>
-        <input id="proxy" type="url" placeholder="https://tu-relay.workers.dev" autocomplete="off" />
-      </details>
     </main>
     <script src="./app.js" type="module"></script>
   </body>

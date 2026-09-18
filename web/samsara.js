@@ -27,16 +27,24 @@ function isLocalHost(hostname) {
   return hostname === "127.0.0.1" || hostname === "localhost";
 }
 
+function hasSameOriginRelay(hostname) {
+  return (
+    isLocalHost(hostname) ||
+    hostname.endsWith("netlify.app") ||
+    hostname.endsWith("pages.dev")
+  );
+}
+
 export function resolveApiRoot(config, locationLike = window.location) {
   const proxy = String(config.proxyUrl || "").trim().replace(/\/$/, "");
   if (proxy) return `${proxy}/samsara`;
-  if (isLocalHost(locationLike.hostname)) return "/samsara";
+  if (hasSameOriginRelay(locationLike.hostname || "")) return "/samsara";
   return String(config.apiBaseUrl || "https://api.samsara.com").replace(/\/$/, "");
 }
 
 function apiErrorMessage(status, payload, cors) {
   if (cors) {
-    return "El navegador bloqueó api.samsara.com (CORS). Esta página pública necesita el relay del repo (python web/server.py) o la URL del proxy en la sesión.";
+    return "El navegador bloqueó Samsara desde github.io. Desbloquea en http://127.0.0.1:8787 (python web/server.py) o importa este mismo repo de GitHub en Netlify.";
   }
   if (status === 401) {
     return "Token inválido. Pega el api_key de esta org (Read Vehicles + Read/Write Functions).";

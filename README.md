@@ -9,11 +9,12 @@ La invocación es `POST https://api.samsara.com/functions/cemex-telemetry-report
 
 ## Cliente
 
-1. Local: `python web/server.py` → `http://127.0.0.1:8787` (o `Abrir-informe-CEMEX.command`).
-2. Público: [https://ianyaels.github.io/CEMEX-Report/](https://ianyaels.github.io/CEMEX-Report/) — misma UI; si el navegador bloquea Samsara, usa el server local o el relay de `proxy/`.
-3. Pega el api_key de la org (Read Vehicles, Read Vehicle Statistics, Functions Read/Write).
-4. Carga unidades, elige fechas, **Generar en Samsara Storage**.
-5. En Storage busca el archivo que indica la página y descárgalo ahí.
+1. Pega el API token como llave → **Desbloquear y cargar unidades**.
+2. Elige unidad y fechas → **Generar en Samsara Storage**.
+3. En Storage busca el archivo y descárgalo ahí.
+
+Local: `python web/server.py` → `http://127.0.0.1:8787`.  
+Público desde este GitHub: [Netlify (importar el repo)](https://app.netlify.com/start/deploy?repository=https://github.com/ianYaelS/CEMEX-Report) — github.io solo es la UI; el navegador bloquea Samsara ahí.
 
 Un día: inicio = fin. Siete días: p. ej. `2026-08-28` y `2026-09-03`. Máximo 7 días.
 

@@ -163,15 +163,29 @@ button:disabled {
   background: #eef3f8;
 }
 
-.advanced {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 14px;
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.advanced summary {
-  cursor: pointer;
-  margin-bottom: 8px;
+.toolbar .hint {
+  margin: 0;
+}
+
+button.ghost {
+  width: auto;
+  margin-top: 0;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+}
+
+button.ghost:hover {
+  background: #eef3f8;
 }
 
 .hidden {
