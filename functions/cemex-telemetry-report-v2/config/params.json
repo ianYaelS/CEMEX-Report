@@ -1,0 +1,11 @@
+{
+  "vehicle_id": "281475002878096",
+  "start_time": "2026-08-31",
+  "end_time": "2026-08-31",
+  "timezone": "America/Mexico_City",
+  "granularity": "30s",
+  "csv_dialect": "es",
+  "include_csv": "false",
+  "write_storage": "true",
+  "storage_prefix": "CEMEX_Reportes"
+}

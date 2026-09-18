@@ -1,0 +1,17 @@
+.venv/
+.venv*/
+
+.samsara-functions/
+functions/*/dist/
+config/.secrets.json
+**/.secrets.json
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+out/
+*.token
+.env
+.DS_Store
+.streamlit/secrets.toml
+functions/cemex-telemetry-report-v2/.streamlit/secrets.toml

@@ -1,0 +1,74 @@
+{
+  "data": [
+    {
+      "id": "281474977075805",
+      "name": "FAV76",
+      "gps": [
+        {
+          "time": "2026-08-31T15:00:10Z",
+          "latitude": 19.4326,
+          "longitude": -99.1332,
+          "speedMilesPerHour": 6.213712,
+          "isEcuSpeed": true,
+          "reverseGeo": {
+            "formattedLocation": "Av. Paseo de la Reforma, CDMX"
+          }
+        },
+        {
+          "time": "2026-08-31T15:00:40Z",
+          "latitude": 19.433,
+          "longitude": -99.133,
+          "speedMilesPerHour": 1.0,
+          "isEcuSpeed": true,
+          "reverseGeo": {
+            "formattedLocation": "Av. Paseo de la Reforma 2, CDMX"
+          }
+        },
+        {
+          "time": "2026-08-31T15:01:05Z",
+          "latitude": 19.434,
+          "longitude": -99.132,
+          "speedMilesPerHour": 0.0,
+          "isEcuSpeed": true,
+          "reverseGeo": {
+            "formattedLocation": "Av. Juarez, CDMX"
+          }
+        }
+      ],
+      "engineStates": [
+        {
+          "time": "2026-08-31T14:59:00Z",
+          "value": "On"
+        },
+        {
+          "time": "2026-08-31T15:00:20Z",
+          "value": "Idle"
+        },
+        {
+          "time": "2026-08-31T15:01:00Z",
+          "value": "Off"
+        }
+      ],
+      "obdOdometerMeters": [
+        {
+          "time": "2026-08-31T15:00:00Z",
+          "value": 227593015
+        },
+        {
+          "time": "2026-08-31T15:01:00Z",
+          "value": 228008850
+        }
+      ],
+      "gpsOdometerMeters": [
+        {
+          "time": "2026-08-31T15:00:10Z",
+          "value": 999999999
+        }
+      ]
+    }
+  ],
+  "pagination": {
+    "endCursor": "",
+    "hasNextPage": false
+  }
+}
