@@ -3,7 +3,8 @@
  * Deploy: wrangler deploy (Cloudflare Workers, gratis).
  */
 const SAMSARA = "https://api.samsara.com";
-const ALLOW_HEADERS = "Authorization, Content-Type, Accept";
+const ALLOW_HEADERS = "Authorization, Content-Type, Accept, X-Samsara-Version";
+const SAMSARA_VERSION = "2025-10-23";
 
 function corsHeaders(origin) {
   return {
@@ -30,6 +31,7 @@ export default {
       headers: {
         Accept: "application/json",
         Authorization: request.headers.get("Authorization") || "",
+        "X-Samsara-Version": request.headers.get("X-Samsara-Version") || SAMSARA_VERSION,
         ...(request.method !== "GET" ? { "Content-Type": "application/json" } : {}),
       },
       body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.text(),

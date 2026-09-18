@@ -30,8 +30,8 @@ def expected_storage_key(prefix: str, vehicle_id: str, vehicle_name: str, start:
 
 def test_portal_points_to_cemex_function() -> None:
     config = json.loads((Path(__file__).resolve().parents[1] / "config.json").read_text(encoding="utf-8"))
-    assert config["functionName"] == "cemex-telemetry-report"
-    assert "cemex-telemetry-report" in config["functionNames"]
+    assert config["functionName"] == "cemex-telemetry-report-ui"
+    assert "cemex-telemetry-report-ui" in config["functionNames"]
     assert "view=storage" in config["storageUrl"]
 
 
@@ -53,8 +53,8 @@ def test_expected_key_matches_function_one_day() -> None:
 
 def test_function_urls_use_selected_name() -> None:
     org = "11006658"
-    name = "cemex-telemetry-report"
+    name = "cemex-telemetry-report-ui"
     page = f"https://cloud.samsara.com/o/{org}/fleet/config/functions?name={name}"
     storage = f"https://cloud.samsara.com/o/{org}/fleet/config/functions?view=storage&name={name}"
-    assert "name=cemex-telemetry-report" in page
+    assert "name=cemex-telemetry-report-ui" in page
     assert "view=storage" in storage

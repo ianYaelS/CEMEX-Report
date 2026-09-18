@@ -7,7 +7,7 @@ import {
   listVehicles,
   startFunctionRun,
   waitForFunctionRun,
-} from "./samsara.js?v=7";
+} from "./samsara.js?v=8";
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,15 +17,15 @@ const state = {
   unlocked: false,
   apiRoot: "",
   config: {
-    functionName: "cemex-telemetry-report",
-    functionNames: ["cemex-telemetry-report"],
+    functionName: "cemex-telemetry-report-ui",
+    functionNames: ["cemex-telemetry-report-ui"],
     orgId: "11006658",
     apiBaseUrl: "https://api.samsara.com",
     proxyUrl: "",
     storagePrefix: "CEMEX_Reportes",
     storageUrl:
-      "https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report",
-    functionUrl: "https://cloud.samsara.com/o/11006658/fleet/config/functions?name=cemex-telemetry-report",
+      "https://cloud.samsara.com/o/11006658/fleet/config/functions?view=storage&name=cemex-telemetry-report-ui",
+    functionUrl: "https://cloud.samsara.com/o/11006658/fleet/config/functions?name=cemex-telemetry-report-ui",
     maxRangeDays: 7,
   },
 };
@@ -156,7 +156,12 @@ async function loadConfig() {
   if (response.ok) state.config = { ...state.config, ...(await response.json()) };
 }
 
+const configReady = loadConfig().catch((error) => {
+  setStatus("gateStatus", error.message, "err");
+});
+
 async function unlock() {
+  await configReady;
   if (!token()) {
     setStatus("gateStatus", "Pega el API token para desbloquear.", "err");
     $("token").focus();
@@ -253,5 +258,3 @@ $("token").addEventListener("keydown", (event) => {
 });
 $("start").value = "2026-08-31";
 $("end").value = "2026-08-31";
-
-loadConfig().catch((error) => setStatus("gateStatus", error.message, "err"));

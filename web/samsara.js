@@ -26,9 +26,10 @@ export function vehicleLabel(vehicle) {
 export function apiCandidates(config) {
   const roots = [];
   const proxy = String(config.proxyUrl || "").trim().replace(/\/$/, "");
+  const hosted = typeof location !== "undefined" && /github\.io$/i.test(location.hostname);
   if (proxy) roots.push(`${proxy}/samsara`);
-  roots.push("/samsara");
-  roots.push(String(config.apiBaseUrl || "https://api.samsara.com").replace(/\/$/, ""));
+  if (!hosted) roots.push("/samsara");
+  if (!hosted) roots.push(String(config.apiBaseUrl || "https://api.samsara.com").replace(/\/$/, ""));
   return [...new Set(roots)];
 }
 
@@ -38,7 +39,7 @@ export function resolveApiRoot(config) {
 
 function apiErrorMessage(status, payload, cors) {
   if (cors) {
-    return "No se pudo conectar con Samsara. Revisa el token.";
+    return "No se pudo hablar con Samsara desde el navegador.";
   }
   if (status === 401) {
     return "Token inválido.";
@@ -184,7 +185,10 @@ export async function listVehicles(apiRoot, token) {
 
 export async function connectSamsara(config, token) {
   const candidates = apiCandidates(config);
-  let lastError = new Error("No se pudo conectar con Samsara. Revisa el token.");
+  if (!candidates.length) {
+    throw new Error("El portal no tiene relevo configurado.");
+  }
+  let lastError = new Error("No se pudo hablar con Samsara desde el navegador.");
   for (const root of candidates) {
     try {
       await samsaraFetch(root, token, "/fleet/vehicles?limit=1");
